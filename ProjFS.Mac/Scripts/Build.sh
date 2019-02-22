@@ -12,8 +12,14 @@ PACKAGES=$ROOTDIR/packages
 COVERAGEDIR=$ROOTDIR/BuildOutput/ProjFS.Mac/Coverage
 
 PROJFS=$SRCDIR/ProjFS.Mac
-
-xcodebuild -configuration $CONFIGURATION -project $PROJFS/PrjFS.xcodeproj  -scheme 'Build All' -derivedDataPath $ROOTDIR/BuildOutput/ProjFS.Mac/Native build || exit 1
+if [ -z "$DEVELOPMENT_TEAM" ]
+then
+    echo "DEVELOPMENT_TEAM environment variable not set, using from project..."
+    xcodebuild -configuration $CONFIGURATION -project $PROJFS/PrjFS.xcodeproj  -scheme 'Build All' -derivedDataPath $ROOTDIR/BuildOutput/ProjFS.Mac/Native build || exit 1
+else
+    echo "DEVELOPMENT_TEAM environment variable is set to $DEVELOPMENT_TEAM, passing to xcodebuild..."
+    xcodebuild -configuration $CONFIGURATION -project $PROJFS/PrjFS.xcodeproj  -scheme 'Build All' -derivedDataPath $ROOTDIR/BuildOutput/ProjFS.Mac/Native DEVELOPMENT_TEAM=$DEVELOPMENT_TEAM build || exit 1
+fi
 
 if !(gem list --local | grep xcpretty); then
   echo "Attempting to run 'sudo gem install xcpretty'.  This may ask you for your password to gain admin privileges"
@@ -22,7 +28,14 @@ fi
 
 # Run Tests and put output into a xml file
 set -o pipefail
-xcodebuild -configuration $CONFIGURATION -enableCodeCoverage YES -project $PROJFS/PrjFS.xcodeproj -derivedDataPath $COVERAGEDIR -scheme 'Build All' test | xcpretty -r junit --output $PROJFS/TestResultJunit.xml || exit 1
+if [ -z "$DEVELOPMENT_TEAM" ]
+then
+    echo "DEVELOPMENT_TEAM environment variable not set, using from project..."
+		xcodebuild -configuration $CONFIGURATION -enableCodeCoverage YES -project $PROJFS/PrjFS.xcodeproj -derivedDataPath $COVERAGEDIR -scheme 'Build All' test | xcpretty -r junit --output $PROJFS/TestResultJunit.xml || exit 1
+else
+    echo "DEVELOPMENT_TEAM environment variable is set to $DEVELOPMENT_TEAM, passing to xcodebuild..."
+		xcodebuild -configuration $CONFIGURATION -enableCodeCoverage YES -project $PROJFS/PrjFS.xcodeproj -derivedDataPath $COVERAGEDIR -scheme 'Build All' test DEVELOPMENT_TEAM=$DEVELOPMENT_TEAM | xcpretty -r junit --output $PROJFS/TestResultJunit.xml || exit 1
+fi
 set +o pipefail
 
 while read -rd $'\0' file; do
@@ -42,53 +55,53 @@ fi
 #xcrun xccov view "$COVERAGE_FILE" --json | TERM=xterm-256color xcperfect
 
 printf "\n\nCode Coverage Report\n"
-xcrun xccov view "$COVERAGE_FILE" | tee $PROJFS/CoverageResult.txt 
+xcrun xccov view "$COVERAGE_FILE" | tee $PROJFS/CoverageResult.txt
 
 # Fail on any line that doesn't show %100 coverage and isn't on the exclusion list or hpp/cpp
 while read line; do
-  if [[ $line != *"100.00%"* ]] && 
-     [[ $line == *"%"* ]] && 
-	 [[ $line != *"KauthHandler_Init"* ]] && 
-	 [[ $line != *"KauthHandler_Cleanup"* ]] && 
+  if [[ $line != *"100.00%"* ]] &&
+     [[ $line == *"%"* ]] &&
+	 [[ $line != *"KauthHandler_Init"* ]] &&
+	 [[ $line != *"KauthHandler_Cleanup"* ]] &&
 	 [[ $line != *"HandleVnodeOperation"* ]] &&                      #SHOULD ADD COVERAGE
 	 [[ $line != *"HandleFileOpOperation"* ]] &&                     #SHOULD ADD COVERAGE
 	 [[ $line != *"TryGetVirtualizationRoot"* ]] &&                  #SHOULD ADD COVERAGE
 	 [[ $line != *"ShouldHandleFileOpEvent"* ]] &&                   #SHOULD ADD COVERAGE
-	 [[ $line != *"WaitForListenerCompletion"* ]] && 
-	 [[ $line != *"KextLog_"* ]] && 
-	 [[ $line != *"Definition"* ]] && 
-	 [[ $line != *"PerfTracer"* ]] && 
+	 [[ $line != *"WaitForListenerCompletion"* ]] &&
+	 [[ $line != *"KextLog_"* ]] &&
+	 [[ $line != *"Definition"* ]] &&
+	 [[ $line != *"PerfTracer"* ]] &&
 	 [[ $line != *"VirtualizationRoot_GetActiveProvider"* ]] &&      #SHOULD ADD COVERAGE
-	 [[ $line != *"VirtualizationRoots_Init"* ]] && 
-	 [[ $line != *"VirtualizationRoots_Cleanup"* ]] && 
-	 [[ $line != *"VnodeCache_Init"* ]] && 
-	 [[ $line != *"VnodeCache_Cleanup"* ]] && 
+	 [[ $line != *"VirtualizationRoots_Init"* ]] &&
+	 [[ $line != *"VirtualizationRoots_Cleanup"* ]] &&
+	 [[ $line != *"VnodeCache_Init"* ]] &&
+	 [[ $line != *"VnodeCache_Cleanup"* ]] &&
 	 [[ $line != *"FindOrDetectRootAtVnode"* ]] &&                   #SHOULD ADD COVERAGE
 	 [[ $line != *"FindUnusedIndexOrGrow_Locked"* ]] &&              #SHOULD ADD COVERAGE
 	 [[ $line != *"FindRootAtVnode_Locked"* ]] &&                    #SHOULD ADD COVERAGE
-	 [[ $line != *"ActiveProvider_"* ]] && 
-	 [[ $line != *"GetRelativePath"* ]] && 
-	 [[ $line != *"VirtualizationRoot_GetRootRelativePath"* ]] && 
-	 [[ $line != *"MockCalls"* ]] && 
+	 [[ $line != *"ActiveProvider_"* ]] &&
+	 [[ $line != *"GetRelativePath"* ]] &&
+	 [[ $line != *"VirtualizationRoot_GetRootRelativePath"* ]] &&
+	 [[ $line != *"MockCalls"* ]] &&
 	 [[ $line != *"VnodeCacheEntriesWrapper"* ]] &&
-	 [[ $line != *"PerfTracing_"* ]] && 
-	 [[ $line != *"proc_"* ]] && 
-	 [[ $line != *"ParentPathString"* ]] && 
-	 [[ $line != *"SetAndRegisterPath"* ]] && 
+	 [[ $line != *"PerfTracing_"* ]] &&
+	 [[ $line != *"proc_"* ]] &&
+	 [[ $line != *"ParentPathString"* ]] &&
+	 [[ $line != *"SetAndRegisterPath"* ]] &&
 	 [[ $line != *"vn_"* ]] &&
-	 [[ $line != *"vfs_"* ]] && 
-	 [[ $line != *"vnode_lookup"* ]] && 
-	 [[ $line != *"RetainIOCount"* ]] && 
-	 [[ $line != *"ProviderMessaging_"* ]] && 
-	 [[ $line != *"RWLock_DropExclusiveToShared"* ]] && 
-	 [[ $line != *".xctest"* ]] && 
-	 [[ $line != *".cpp"* ]] && 
-	 [[ $line != *".a"* ]] && 
+	 [[ $line != *"vfs_"* ]] &&
+	 [[ $line != *"vnode_lookup"* ]] &&
+	 [[ $line != *"RetainIOCount"* ]] &&
+	 [[ $line != *"ProviderMessaging_"* ]] &&
+	 [[ $line != *"RWLock_DropExclusiveToShared"* ]] &&
+	 [[ $line != *".xctest"* ]] &&
+	 [[ $line != *".cpp"* ]] &&
+	 [[ $line != *".a"* ]] &&
 	 [[ $line != *".hpp"* ]]; then
        echo "Error: not at 100% Code Coverage $line"
        exit 1
   fi
-done < $PROJFS/CoverageResult.txt 
+done < $PROJFS/CoverageResult.txt
 
 # If we're building the Profiling(Release) configuration, remove Profiling() for building .NET code
 if [ "$CONFIGURATION" == "Profiling(Release)" ]; then
